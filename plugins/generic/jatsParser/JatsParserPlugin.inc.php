@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @file plugins/generic/jatsParser/JatsParserPlugin.inc.php
  *
@@ -25,9 +26,11 @@ use \PKP\components\forms\FormComponent;
 
 define("CREATE_PDF_QUERY", "download=pdf");
 
-class JatsParserPlugin extends GenericPlugin {
+class JatsParserPlugin extends GenericPlugin
+{
 
-	function register($category, $path, $mainContextId = null) {
+	function register($category, $path, $mainContextId = null)
+	{
 		if (parent::register($category, $path, $mainContextId)) {
 
 			if ($this->getEnabled()) {
@@ -37,6 +40,7 @@ class JatsParserPlugin extends GenericPlugin {
 				HookRegistry::register('LoadHandler', array($this, 'loadFullTextAssocHandler'));
 				HookRegistry::register('Publication::edit', array($this, 'editPublicationFullText'));
 				HookRegistry::register('Templates::Article::Main', array($this, 'displayFullText'));
+				HookRegistry::register('Templates::Article::JatsParserFullText', array($this, 'displayFullText'));
 				HookRegistry::register('TemplateManager::display', array($this, 'themeSpecificStyles'));
 				HookRegistry::register('Form::config::before', array($this, 'addCitationsFormFields'));
 				HookRegistry::register('Publication::edit', array($this, 'editPublicationReferences'));
@@ -52,7 +56,8 @@ class JatsParserPlugin extends GenericPlugin {
 	 * Get the plugin display name.
 	 * @return string
 	 */
-	function getDisplayName() {
+	function getDisplayName()
+	{
 		return __('plugins.generic.jatsParser.displayName');
 	}
 
@@ -60,18 +65,20 @@ class JatsParserPlugin extends GenericPlugin {
 	 * Get the plugin description.
 	 * @return string
 	 */
-	function getDescription() {
+	function getDescription()
+	{
 		return __('plugins.generic.jatsParser.description');
 	}
 
 	/**
 	 * @copydoc Plugin::getActions()
 	 */
-	function getActions($request, $verb) {
+	function getActions($request, $verb)
+	{
 		$router = $request->getRouter();
 		import('lib.pkp.classes.linkAction.request.AjaxModal');
 		return array_merge(
-			$this->getEnabled()?array(
+			$this->getEnabled() ? array(
 				new LinkAction(
 					'settings',
 					new AjaxModal(
@@ -81,14 +88,15 @@ class JatsParserPlugin extends GenericPlugin {
 					__('manager.plugins.settings'),
 					null
 				),
-			):array(),
+			) : array(),
 			parent::getActions($request, $verb)
 		);
 	}
- 	/**
+	/**
 	 * @copydoc Plugin::manage()
 	 */
-	function manage($args, $request) {
+	function manage($args, $request)
+	{
 		switch ($request->getUserVar('verb')) {
 			case 'settings':
 				$context = $request->getContext();
@@ -109,6 +117,14 @@ class JatsParserPlugin extends GenericPlugin {
 		return parent::manage($args, $request);
 	}
 
+	public function Header($pdf, $title)
+	{
+		// Set font
+		$pdf->SetFont('helvetica', 'B', 40);
+		// Title
+		$pdf->Cell(0, 15, $title, 0, false, 'C', 0, '', 0, false, 'M', 'M');
+	}
+
 	/**
 	 * @param $article Submission
 	 * @param $request PKPRequest
@@ -118,6 +134,8 @@ class JatsParserPlugin extends GenericPlugin {
 	 */
 	private function pdfCreation(string $htmlString, Publication $publication, Request $request, string $localeKey): string
 	{
+
+
 		// HTML preparation
 		$context = $request->getContext(); /* @var $context Journal */
 		$submission = Services::get('submission')->get($publication->getData('submissionId')); /* @var $submission Submission */
@@ -148,6 +166,7 @@ class JatsParserPlugin extends GenericPlugin {
 		$pdfDocument->SetAuthor($publication->getAuthorString($userGroups));
 		$pdfDocument->SetSubject($publication->getLocalizedData('subject', $localeKey));
 
+
 		$articleDataString = '';
 
 		if ($issue && $issueIdentification = $issue->getIssueIdentification()) {
@@ -155,17 +174,18 @@ class JatsParserPlugin extends GenericPlugin {
 		}
 
 		if ($pages = $publication->getLocalizedData('subject', $localeKey)) {
-			$articleDataString .= ", ". $pages;
+			$articleDataString .= ", " . $pages;
 		}
 
 		if ($doi = $publication->getData('pub-id::doi')) {
 			$articleDataString .= "\n" . __('plugins.pubIds.doi.readerDisplayName', null, $localeKey) . ': ' . $doi;
 		}
 
-		$pdfDocument->SetHeaderData($pdfHeaderLogo, PDF_HEADER_LOGO_WIDTH, $journal->getName($localeKey), $articleDataString);
-
-		$pdfDocument->setHeaderFont(Array(PDF_FONT_NAME_MAIN, '', PDF_FONT_SIZE_MAIN));
-		$pdfDocument->setFooterFont(Array(PDF_FONT_NAME_DATA, '', PDF_FONT_SIZE_DATA));
+		$pdfDocument->SetHeaderData(null, null, strtoupper($journal->getName($localeKey)), null);
+		$pdfDocument->setHeaderFont(array(PDF_FONT_NAME_MAIN, '', PDF_FONT_SIZE_DATA + 10));
+		//  4 - footer data
+		$pdfDocument->setFooterDataFromOrigin($doi . ' ' . strftime('%B %d,%Y', strtotime($submission->getDateSubmitted())));
+		$pdfDocument->setFooterFont(array(PDF_FONT_NAME_DATA, '', PDF_FONT_SIZE_DATA));
 		$pdfDocument->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
 		$pdfDocument->SetMargins(PDF_MARGIN_LEFT, PDF_MARGIN_TOP, PDF_MARGIN_RIGHT);
 		$pdfDocument->SetHeaderMargin(PDF_MARGIN_HEADER);
@@ -175,39 +195,97 @@ class JatsParserPlugin extends GenericPlugin {
 
 		$pdfDocument->AddPage();
 
+		// 2 - SECTION ID
+		if ($publication->getData('sectionId') == 1) {
+			$txt = 'ARTÍCULOS';
+		}
+		// $pdfDocument->Cell(45, 5, ' ', 0);
+
+		$pdfDocument->MultiCell('', 0, $txt, 0, 'J', false, 2, 19, '', true, 0, false, true, 0, "T", true);
+
+		// $pdfDocument->Cell(190, 0, $txt, 0, 1, 'L');
+		$pdfDocument->Ln();
+
 		// Article title
 
 		$pdfDocument->SetFillColor(255, 255, 255);
-		$pdfDocument->SetFont('dejavuserif', 'B', 20);
-		$pdfDocument->MultiCell('', '', $publication->getLocalizedFullTitle($localeKey), 0, 'L', 1, 1, '' ,'', true);
+		$pdfDocument->SetFont('dejavuserif', '', 30);
+		// $pdfDocument->Cell(45, 5, ' ', 0);
+		// $pdfDocument->MultiCell('', 0, $publication->getLocalizedFullTitle($localeKey), 0, 'L', 1, 1, '', '', true);
+		$pdfDocument->MultiCell('', 0, $publication->getLocalizedFullTitle($localeKey), 0, '', 1, 2, 19, '', true, 0, false, true, 0, "T", true);
+
 		$pdfDocument->Ln(6);
 
 		// Article's authors
+		$i = 0;
 		$authors = $publication->getData('authors');
 		if (count($authors) > 0) {
 			/* @var $author Author */
+			$lastAuthor = end($authors);
 			foreach ($authors as $author) {
-				$pdfDocument->SetFont('dejavuserif', 'I', 10);
+				$i += 1;
+				$pdfDocument->SetFont('dejavuserif', 'B', 10);
 
 				// Calculating the line height for author name and affiliation
-				$authorName = htmlspecialchars($author->getGivenName($localeKey)) . ' ' . htmlspecialchars($author->getFamilyName($localeKey));
-				$affiliation = htmlspecialchars($author->getAffiliation($localeKey));
+				$authorName = htmlspecialchars($author->getGivenName($localeKey)) . ' ' . htmlspecialchars($author->getFamilyName($localeKey)) . " <sup>{$i}</sup>";
+				if ($author != $lastAuthor) {
+					$authorName += ",";
+				}
 
 				$authorLineWidth = 60;
 				$authorNameStringHeight = $pdfDocument->getStringHeight($authorLineWidth, $authorName);
 
-				$affiliationLineWidth = 110;
-				$afilliationStringHeight = $pdfDocument->getStringHeight(110, $affiliation);
-
-				$authorNameStringHeight > $afilliationStringHeight ? $cellHeight = $authorNameStringHeight : $cellHeight = $afilliationStringHeight;
+				$cellHeight = $authorNameStringHeight;
 
 				// Writing affiliations into cells
-				$pdfDocument->MultiCell($authorLineWidth, 0, $authorName, 0, 'L', 1, 0, 19, '', true, 0, false, true, 0, "T", true);
-				$pdfDocument->SetFont('dejavuserif', '', 10);
-				$pdfDocument->MultiCell($affiliationLineWidth, $cellHeight, $affiliation, 0, 'L', 1, 1, '', '', true, 0, false, true, 0, "T", true);
+				$pdfDocument->MultiCell($authorLineWidth, 0, $authorName, 0, '', 1, 0, 19, '', true, 0, true, true, 0, "T", true);
+
+				$orcidPlugin = PluginRegistry::getPlugin('generic', 'orcidprofileplugin');
+
+				$orcid = $author->getData('orcid');
+				$orcidIcon = $orcidPlugin->getIcon();
+				$xSVG = $pdfDocument->GetX();
+				$ySVG = $pdfDocument->GetY();
+				$pdfDocument->ImageSVG("@{$orcidIcon}", $x = $xSVG, $y = $ySVG, $w = 4, $h = 4, $link = $orcid, $align = '', $palign = '', $border = 0, $fitonpage = false);
+
+				$rorPlugin = new RORPlugin();
+				$rorIdIcon = $rorPlugin->getIcon();
+				$rorId = $author->getData('rorId');
+				$xSVG2 = $pdfDocument->GetX() + 5;
+				$ySVG2 = $pdfDocument->GetY();
+				$pdfDocument->ImageSVG("@{$rorIdIcon}", $x = $xSVG2, $y = $ySVG2, $w = 4, $h = 4, $link = $rorId, $align = '', $palign = '', $border = 1, $fitonpage = false);
 			}
 			$pdfDocument->Ln(6);
 		}
+		$i = 0;
+		//5 -Article's affiliation
+		if (count($authors) > 0) {
+			/* @var $author Author */
+			foreach ($authors as $author) {
+				$i += 1;
+
+				$pdfDocument->SetFont('dejavuserif', 'I', 10);
+				$pdfDocument->setCellPaddings(1, 1, 1, 1);
+				$pdfDocument->setCellMargins(1, 1, 1, 1);
+				// Calculating the line height for author name and affiliation
+				$biography = "<b>{$i}</b>" . ' ' . htmlspecialchars($author->getBiography($localeKey));
+				if ($author != $lastAuthor) {
+					$biography += ",";
+				}
+
+				$biographyLineWidth = 170;
+				$biographyStringHeight = $pdfDocument->getStringHeight($biographyLineWidth, $biography);
+				$cellHeight = $biographyStringHeight;
+
+				// Writing affiliations into cells
+
+				$pdfDocument->MultiCell($biographyLineWidth, $cellHeight, $biography, 0, 'J', 1, 1, 19, '', true, 0, true, true, 0, "T", true);
+			}
+			$pdfDocument->Ln(6);
+		}
+
+
+
 
 		// Abstract
 		if ($abstract = $publication->getLocalizedData('abstract', $localeKey)) {
@@ -234,7 +312,8 @@ class JatsParserPlugin extends GenericPlugin {
 	 * @param string $htmlString
 	 * @return string Preprocessed HTML string for TCPDF
 	 */
-	private function _prepareForPdfGalley(string $htmlString): string {
+	private function _prepareForPdfGalley(string $htmlString): string
+	{
 
 		$dom = new DOMDocument('1.0', 'utf-8');
 		$htmlHead = "\n";
@@ -292,7 +371,8 @@ class JatsParserPlugin extends GenericPlugin {
 	 * 	@option object Publication schema
 	 * ]]
 	 */
-	public function addToSchema($hookName, $args) {
+	public function addToSchema($hookName, $args)
+	{
 		$schema = $args[0];
 		$propId = '{
 			"type": "integer",
@@ -318,7 +398,8 @@ class JatsParserPlugin extends GenericPlugin {
 	 * @param string $hookname
 	 * @param array $args [string, TemplateManager]
 	 */
-	function publicationTemplateData(string $hookname, array $args): void {
+	function publicationTemplateData(string $hookname, array $args): void
+	{
 		/**
 		 * @var $templateMgr TemplateManager
 		 * @var $submission Submission
@@ -334,7 +415,7 @@ class JatsParserPlugin extends GenericPlugin {
 
 		$supportedSubmissionLocales = $context->getSupportedSubmissionLocales();
 		$localeNames = AppLocale::getAllLocales();
-		$locales = array_map(function($localeKey) use ($localeNames) {
+		$locales = array_map(function ($localeKey) use ($localeNames) {
 			return ['key' => $localeKey, 'label' => $localeNames[$localeKey]];
 		}, $supportedSubmissionLocales);
 
@@ -378,7 +459,8 @@ class JatsParserPlugin extends GenericPlugin {
 	 * @param $args array
 	 * @brief Handle associated files of the full-text, only images are supported
 	 */
-	function loadFullTextAssocHandler($hookName, $args) {
+	function loadFullTextAssocHandler($hookName, $args)
+	{
 		$page = $args[0];
 		$op = $args[1];
 
@@ -399,7 +481,8 @@ class JatsParserPlugin extends GenericPlugin {
 	 * ]
 	 * @return bool
 	 */
-	function editPublicationFullText(string $hookname, array $args) {
+	function editPublicationFullText(string $hookname, array $args)
+	{
 		$newPublication = $args[0];
 		$params = $args[2];
 		if (!array_key_exists('jatsParser::fullTextFileId', $params)) return false;
@@ -425,7 +508,8 @@ class JatsParserPlugin extends GenericPlugin {
 	 * @return bool
 	 * @brief modify citationsRaw property based on parsed citations from JATS XML
 	 */
-	function editPublicationReferences(string $hookname, array $args) {
+	function editPublicationReferences(string $hookname, array $args)
+	{
 		$newPublication = $args[0];
 		$params = $args[2];
 		if (!array_key_exists('jatsParser::references', $params)) return false;
@@ -456,7 +540,8 @@ class JatsParserPlugin extends GenericPlugin {
 	 * @return false
 	 * @brief creates a PDF file and saves as a galley
 	 */
-	function createPdfGalley(string $hookname, array $args) {
+	function createPdfGalley(string $hookname, array $args)
+	{
 		$newPublication = $args[0]; /* @var $newPublication Publication */
 		$params = $args[2];
 		$request = $args[3];
@@ -514,7 +599,8 @@ class JatsParserPlugin extends GenericPlugin {
 	 * @return int
 	 * @brief create an empty galley
 	 */
-	function createGalley(string $galleyLocale, Publication $publication): int {
+	function createGalley(string $galleyLocale, Publication $publication): int
+	{
 		$articleGalleyDao = DAORegistry::getDAO('ArticleGalleyDAO'); /* @var $articleGalleyDao ArticleGalleyDAO */
 		$articleGalley = $articleGalleyDao->newDataObject();
 		$articleGalley->setLocale($galleyLocale);
@@ -528,7 +614,8 @@ class JatsParserPlugin extends GenericPlugin {
 	 * @param Publication $publication publication associated with a submission file
 	 * @brief creates a new PDF submission file
 	 */
-	private function _setPdfSubmissionFile(string $pdfBinaryString, Publication $publication, ArticleGalley $galley) {
+	private function _setPdfSubmissionFile(string $pdfBinaryString, Publication $publication, ArticleGalley $galley)
+	{
 		$submission = Services::get('submission')->get($publication->getData('submissionId')); /* @var $submission Submission */
 		$request = $this->getRequest();
 
@@ -568,7 +655,8 @@ class JatsParserPlugin extends GenericPlugin {
 				'genreId' => $genre->getId(),
 				'name' => $name,
 				'submissionId' => $submission->getId(),
-			]);
+			]
+		);
 		$submissionFile = Services::get('submissionFile')->add($submissionFile, $request);
 
 		unlink($tmpFile); // remove temporary file
@@ -582,7 +670,8 @@ class JatsParserPlugin extends GenericPlugin {
 	 * @return string
 	 * @brief set references for PDF galley
 	 */
-	private function _setReferences(Publication $publication, string $locale, string $htmlString): string {
+	private function _setReferences(Publication $publication, string $locale, string $htmlString): string
+	{
 		$rawCitations = $publication->getData('citationsRaw');
 		if (empty($rawCitations)) return $htmlString;
 
@@ -614,7 +703,8 @@ class JatsParserPlugin extends GenericPlugin {
 	 * use CitationStyleLanguagePlugin if set
 	 * use vancouver style otherwise
 	 */
-	function getCitationStyle(Journal $context): string {
+	function getCitationStyle(Journal $context): string
+	{
 
 		$contextId = $context->getId();
 
@@ -625,7 +715,8 @@ class JatsParserPlugin extends GenericPlugin {
 		$pluginSettingsDAO = DAORegistry::getDAO('PluginSettingsDAO');
 		$cslPluginSettings = $pluginSettingsDAO->getPluginSettings($contextId, 'CitationStyleLanguagePlugin');
 
-		if ($cslPluginSettings &&
+		if (
+			$cslPluginSettings &&
 			array_key_exists('enabled', $cslPluginSettings) &&
 			$cslPluginSettings['enabled'] &&
 			array_key_exists('primaryCitationStyle', $cslPluginSettings) &&
@@ -644,10 +735,12 @@ class JatsParserPlugin extends GenericPlugin {
 	 * @return void
 	 * @brief saves parsed citeproc references as raw citations
 	 */
-	private function _importCitations(HTMLDocument $htmlDocument, Publication $newPublication): void {
+	private function _importCitations(HTMLDocument $htmlDocument, Publication $newPublication): void
+	{
 		$refs = $htmlDocument->getRawReferences();
 		$publicationId = $newPublication->getId();
-		$citationDao = DAORegistry::getDAO('CitationDAO'); /** @var $citationDao CitationDAO */
+		$citationDao = DAORegistry::getDAO('CitationDAO');
+		/** @var $citationDao CitationDAO */
 
 		$citationDao->deleteByPublicationId($publicationId);
 		$rawCitations = '';
@@ -664,7 +757,8 @@ class JatsParserPlugin extends GenericPlugin {
 	 * @return HTMLDocument
 	 * @brief retrieves PHP DOM representation of the article's full-text
 	 */
-	public function getFullTextFromJats (SubmissionFile $submissionFile): HTMLDocument {
+	public function getFullTextFromJats(SubmissionFile $submissionFile): HTMLDocument
+	{
 		import('lib.pkp.classes.file.PrivateFileManager');
 		$fileMgr = new PrivateFileManager();
 		$htmlDocument = new HTMLDocument(new Document($fileMgr->getBasePath() . DIRECTORY_SEPARATOR . $submissionFile->getData('path')));
@@ -677,9 +771,10 @@ class JatsParserPlugin extends GenericPlugin {
 	 * @return bool
 	 * @brief Displays full-text on article landing page
 	 */
-	function displayFullText(string $hookname, array $args) {
-		$templateMgr =& $args[1];
-		$output =& $args[2];
+	function displayFullText(string $hookname, array $args)
+	{
+		$templateMgr = &$args[1];
+		$output = &$args[2];
 		$publication = $templateMgr->getTemplateVars('publication');
 		$submission = $templateMgr->getTemplateVars('article');
 		$fullTexts = $publication->getData('jatsParser::fullText');
@@ -734,7 +829,8 @@ class JatsParserPlugin extends GenericPlugin {
 	 * @return string
 	 * @brief Substitute path to attached images for full-text HTML
 	 */
-	function _setSupplImgPath(SubmissionFile $submissionFile, string $htmlString): string {
+	function _setSupplImgPath(SubmissionFile $submissionFile, string $htmlString): string
+	{
 		$dependentFilesIterator = Services::get('submissionFile')->getMany([
 			'assocTypes' => [ASSOC_TYPE_SUBMISSION_FILE],
 			'assocIds' => [$submissionFile->getId()],
@@ -792,14 +888,16 @@ class JatsParserPlugin extends GenericPlugin {
 	 * @return array
 	 * @brief get the list of types of files that are dependent from an original JATS XML (from which full-text was generated) and are accessible to public
 	 */
-	public static function getSupportedSupplFileTypes() {
+	public static function getSupportedSupplFileTypes()
+	{
 		return [
 			'image/png',
 			'image/jpeg'
 		];
 	}
 
-	public static function getSupportedCitationStyles() {
+	public static function getSupportedCitationStyles()
+	{
 		return [
 			[
 				'id' => 'acm-sig-proceedings',
@@ -850,7 +948,8 @@ class JatsParserPlugin extends GenericPlugin {
 	 * @return bool
 	 * @brief theme-specific styles for galley and article landing page
 	 */
-	function themeSpecificStyles(string $hookname, array $args) {
+	function themeSpecificStyles(string $hookname, array $args)
+	{
 		$templateMgr = $args[0];
 		$template = $args[1];
 
@@ -877,7 +976,8 @@ class JatsParserPlugin extends GenericPlugin {
 	 * @return void
 	 * @brief iterate through all submissions and add full-text from  galleys
 	 */
-	public function importGalleys() {
+	public function importGalleys()
+	{
 		$submissionFileDao = DAORegistry::getDAO('SubmissionFileDAO'); /* @var $submissionFileDao SubmissionFileDAO */
 		$request = $this->getRequest();
 		$context = $request->getContext();
@@ -960,8 +1060,8 @@ class JatsParserPlugin extends GenericPlugin {
 							'name' => $assocFile->getData('name'),
 							'caption' => $assocFile->getData('caption'),
 							'copyrightOwner' => $assocFile->getData('copyrightOwner'),
-                            'credit' => $assocFile->getData('credit'),
-                            'terms' =>$assocFile->getData('terms'),
+							'credit' => $assocFile->getData('credit'),
+							'terms' => $assocFile->getData('terms'),
 						]);
 						Services::get('submissionFile')->add($assocSubmissionFile, $request);
 					}
@@ -980,7 +1080,8 @@ class JatsParserPlugin extends GenericPlugin {
 	 * @param $hookName string Form::config::before
 	 * @param $form FormComponent The form object
 	 */
-	public function addCitationsFormFields(string $hookName, FormComponent $form): void {
+	public function addCitationsFormFields(string $hookName, FormComponent $form): void
+	{
 		if ($form->id !== 'citations' || !empty($form->errors)) return;
 
 		$path = parse_url($form->action)['path'];
@@ -989,8 +1090,8 @@ class JatsParserPlugin extends GenericPlugin {
 		$args = explode('/', $path);
 		$publicationId = 0;
 		if ($key = array_search('publications', $args)) {
-			if (array_key_exists($key+1, $args)) {
-				$publicationId = intval($args[$key+1]);
+			if (array_key_exists($key + 1, $args)) {
+				$publicationId = intval($args[$key + 1]);
 			}
 		}
 
@@ -1034,6 +1135,5 @@ class JatsParserPlugin extends GenericPlugin {
 			'options' => $options,
 			'value' => null
 		]));
-
 	}
 }
