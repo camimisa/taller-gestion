@@ -259,6 +259,8 @@ class JatsParserPlugin extends GenericPlugin
 		}
 		$i = 0;
 		//5 -Article's affiliation
+
+		$authorsInfoForCitation = "";
 		if (count($authors) > 0) {
 			/* @var $author Author */
 			foreach ($authors as $author) {
@@ -280,7 +282,10 @@ class JatsParserPlugin extends GenericPlugin
 				// Writing affiliations into cells
 
 				$pdfDocument->MultiCell($biographyLineWidth, $cellHeight, $biography, 0, 'J', 1, 1, 19, '', true, 0, true, true, 0, "T", true);
+
+				$authorsInfoForCitation .= $author->getFamilyName($localeKey) . ' ' . substr($author->getGivenName($localeKey), 0, 1) . ', ';
 			}
+			$authorsInfoForCitation = substr($authorsInfoForCitation, 0, -2);
 			$pdfDocument->Ln(6);
 		}
 
@@ -289,10 +294,26 @@ class JatsParserPlugin extends GenericPlugin
 
 		// Abstract
 		if ($abstract = $publication->getLocalizedData('abstract', $localeKey)) {
+
+			$pdfDocument->SetFont('dejavuserif', '', 8);
+			$yColumn = $pdfDocument->getY();
+			$IDcode = end(explode('.', $doi));
+			#$IDcode = $IDcode[-1];
+			$left_column = "
+				<b>Forma de citar: </b>
+				<span>{$authorsInfoForCitation}. {$publication->getLocalizedFullTitle($localeKey)}. {$journal->getName($localeKey)}. 
+				{$issue->getYear()};{$issue->getVolume()}:e{$IDcode}. {$doi}</span>
+			";
+
+			$pdfDocument->writeHTMLCell(50, '', '', $yColumn, $left_column, 0, 0, 0, true, 'L', true);
+			
 			$pdfDocument->setCellPaddings(5, 5, 5, 5);
 			$pdfDocument->SetFillColor(248, 248, 255);
 			$pdfDocument->SetFont('dejavuserif', '', 10);
 			$pdfDocument->SetLineStyle(array('width' => 0.5, 'cap' => 'butt', 'join' => 'miter', 'dash' => 4, 'color' => array(255, 140, 0)));
+			
+			$abstractTitleHTML = ($localeKey=="es_ES") ? "<h1>RESUMEN</h1>" : "<h1>ABSTRACT</h1>";
+			$abstract = $abstractTitleHTML . $abstract;
 			$pdfDocument->writeHTMLCell('', '', '', '', $abstract, 'B', 1, 1, true, 'J', true);
 			$pdfDocument->Ln(4);
 		}
