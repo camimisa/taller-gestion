@@ -261,6 +261,7 @@ class JatsParserPlugin extends GenericPlugin
 		//5 -Article's affiliation
 
 		$authorsInfoForCitation = "";
+		$biographyHTML = "";
 		if (count($authors) > 0) {
 			/* @var $author Author */
 			foreach ($authors as $author) {
@@ -269,28 +270,22 @@ class JatsParserPlugin extends GenericPlugin
 				$pdfDocument->SetFont('dejavuserif', 'I', 10);
 				$pdfDocument->setCellPaddings(1, 1, 1, 1);
 				$pdfDocument->setCellMargins(1, 1, 1, 1);
-				// Calculating the line height for author name and affiliation
-				$biography = "<b>{$i}</b>" . ' ' . htmlspecialchars($author->getBiography($localeKey));
+
+				$biographyHTML .= "<b>{$i}</b> <span>{$author->getBiography($localeKey)}</span>";
+
 				if ($author != $lastAuthor) {
-					$biography += ",";
+					$biographyHTML .= "<span>, </span>";
 				}
-
-				$biographyLineWidth = 170;
-				$biographyStringHeight = $pdfDocument->getStringHeight($biographyLineWidth, $biography);
-				$cellHeight = $biographyStringHeight;
-
-				// Writing affiliations into cells
-
-				$pdfDocument->MultiCell($biographyLineWidth, $cellHeight, $biography, 0, 'J', 1, 1, 19, '', true, 0, true, true, 0, "T", true);
 
 				$authorsInfoForCitation .= $author->getFamilyName($localeKey) . ' ' . substr($author->getGivenName($localeKey), 0, 1) . ', ';
 			}
 			$authorsInfoForCitation = substr($authorsInfoForCitation, 0, -2);
+			$pdfDocument->writeHTML($biographyHTML, true, false, true, false, '');
 			$pdfDocument->Ln(6);
 		}
 
 
-
+		$pdfDocument->Image('./plugins/themes/defaultManuscript/templates/frontend/images/open.png', '', '', 5, 5, '', '', '', false, 300, '', false, false, 0, false, false, false);
 
 		// Abstract
 		if ($abstract = $publication->getLocalizedData('abstract', $localeKey)) {
@@ -300,6 +295,7 @@ class JatsParserPlugin extends GenericPlugin
 			$IDcode = end(explode('.', $doi));
 			#$IDcode = $IDcode[-1];
 			$left_column = "
+				<p>&nbsp;&nbsp;&nbsp;&nbsp;ACCESO ABIERTO </p>
 				<b>Forma de citar: </b>
 				<span>{$authorsInfoForCitation}. {$publication->getLocalizedFullTitle($localeKey)}. {$journal->getName($localeKey)}. 
 				{$issue->getYear()};{$issue->getVolume()}:e{$IDcode}. {$doi}</span>
