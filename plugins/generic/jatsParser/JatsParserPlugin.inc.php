@@ -222,41 +222,30 @@ class JatsParserPlugin extends GenericPlugin
 		if (count($authors) > 0) {
 			/* @var $author Author */
 			$lastAuthor = end($authors);
+			$i = 0;
+			$rorPlugin = new RORPlugin();
+			$orcidPlugin = PluginRegistry::getPlugin('generic', 'orcidprofileplugin');
+			
 			foreach ($authors as $author) {
-				$i += 1;
-				$pdfDocument->SetFont('dejavuserif', 'B', 10);
 
-				// Calculating the line height for author name and affiliation
-				$authorName = htmlspecialchars($author->getGivenName($localeKey)) . ' ' . htmlspecialchars($author->getFamilyName($localeKey)) . " <sup>{$i}</sup>";
-				if ($author != $lastAuthor) {
-					$authorName += ",";
-				}
-
-				$authorLineWidth = 60;
-				$authorNameStringHeight = $pdfDocument->getStringHeight($authorLineWidth, $authorName);
-
-				$cellHeight = $authorNameStringHeight;
-
-				// Writing affiliations into cells
-				$pdfDocument->MultiCell($authorLineWidth, 0, $authorName, 0, '', 1, 0, 19, '', true, 0, true, true, 0, "T", true);
-
-				$orcidPlugin = PluginRegistry::getPlugin('generic', 'orcidprofileplugin');
-
-				$orcid = $author->getData('orcid');
-				$orcidIcon = $orcidPlugin->getIcon();
-				$xSVG = $pdfDocument->GetX();
-				$ySVG = $pdfDocument->GetY();
-				$pdfDocument->ImageSVG("@{$orcidIcon}", $x = $xSVG, $y = $ySVG, $w = 4, $h = 4, $link = $orcid, $align = '', $palign = '', $border = 0, $fitonpage = false);
-
-				$rorPlugin = new RORPlugin();
-				$rorIdIcon = $rorPlugin->getIcon();
 				$rorId = $author->getData('rorId');
-				$xSVG2 = $pdfDocument->GetX() + 5;
-				$ySVG2 = $pdfDocument->GetY();
-				$pdfDocument->ImageSVG("@{$rorIdIcon}", $x = $xSVG2, $y = $ySVG2, $w = 4, $h = 4, $link = $rorId, $align = '', $palign = '', $border = 1, $fitonpage = false);
+				$orcid = $author->getData('orcid');
+
+				$pdfDocument->SetFont('dejavuserif', 'B', 10);
+				$i += 1;
+
+				$authorName = "<span>{$author->getGivenName($localeKey)} {$author->getFamilyName($localeKey)}</span>";
+				$authorName .= '<img src="./plugins/themes/defaultManuscript/templates/frontend/images/orcid.png" width="12" height="12"/>';
+				$authorName .= '<img src="./plugins/themes/defaultManuscript/templates/frontend/images/rorId.png" width="12" height="12"/>';
+				$authorName .= "<sup>{$i}</sup>";
+
+				if ($author != $lastAuthor) {
+					$authorName .= ",";
+				}
+				$pdfDocument->writeHTML($authorName, true, false, true, false, '');
 			}
-			$pdfDocument->Ln(6);
 		}
+		$pdfDocument->Ln(6);
 		$i = 0;
 		//5 -Article's affiliation
 
