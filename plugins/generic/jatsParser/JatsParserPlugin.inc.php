@@ -234,9 +234,9 @@ class JatsParserPlugin extends GenericPlugin
 				$pdfDocument->SetFont('dejavuserif', 'B', 10);
 				$i += 1;
 
-				$authorName = "<span>{$author->getGivenName($localeKey)} {$author->getFamilyName($localeKey)}</span>";
-				$authorName .= '<img src="./plugins/themes/defaultManuscript/templates/frontend/images/orcid.png" width="12" height="12"/>';
-				$authorName .= '<img src="./plugins/themes/defaultManuscript/templates/frontend/images/rorId.png" width="12" height="12"/>';
+				$authorName = "<span>{$author->getGivenName($localeKey)} {$author->getFamilyName($localeKey)}</span> ";
+				$authorName .= '<a href="'. $orcid . '">' .'<img src="./plugins/themes/defaultManuscript/templates/frontend/images/orcid.png" width="12" height="12"/>' . '</a>';
+				$authorName .= '<a href="'. $rorId . '">' .'<img src="./plugins/themes/defaultManuscript/templates/frontend/images/rorId.png" width="12" height="12"/>' . '</a>';
 				$authorName .= "<sup>{$i}</sup>";
 
 				if ($author != $lastAuthor) {
