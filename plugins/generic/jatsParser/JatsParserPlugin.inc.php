@@ -197,11 +197,13 @@ class JatsParserPlugin extends GenericPlugin
 
 		// 2 - SECTION ID
 		if ($publication->getData('sectionId') == 1) {
-			$txt = 'ARTÍCULOS';
+			$sectionDao = DAORegistry::getDAO('SectionDAO'); /** @var $sectionDao SectionDAO */
+			$section = $sectionDao->getById($publication->getData('sectionId'));
+			$submissionSection = $section->getLocalizedTitle();
 		}
 		// $pdfDocument->Cell(45, 5, ' ', 0);
 
-		$pdfDocument->MultiCell('', 0, $txt, 0, 'J', false, 2, 19, '', true, 0, false, true, 0, "T", true);
+		$pdfDocument->MultiCell('', 0, $submissionSection, 0, 'J', false, 2, 19, '', true, 0, false, true, 0, "T", true);
 
 		// $pdfDocument->Cell(190, 0, $txt, 0, 1, 'L');
 		$pdfDocument->Ln();
@@ -235,14 +237,31 @@ class JatsParserPlugin extends GenericPlugin
 				$i += 1;
 
 				$authorName = "<span>{$author->getGivenName($localeKey)} {$author->getFamilyName($localeKey)}</span> ";
-				$authorName .= '<a href="'. $orcid . '">' .'<img src="./plugins/themes/defaultManuscript/templates/frontend/images/orcid.png" width="12" height="12"/>' . '</a>';
-				$authorName .= '<a href="'. $rorId . '">' .'<img src="./plugins/themes/defaultManuscript/templates/frontend/images/rorId.png" width="12" height="12"/>' . '</a>';
-				$authorName .= "<sup>{$i}</sup>";
+				$orcidHTML = '<a href="'. $orcid . '">' .'<img src="./plugins/themes/defaultManuscript/templates/frontend/images/orcid.png" width="13" height="13"/>' . '</a>';
+				$rorIdHTML = '<a href="'. $rorId . '">' .'<img src="./plugins/themes/defaultManuscript/templates/frontend/images/rorId.png" width="13" height="13"/>' . '</a>';
+				$supHTML = "<sup>{$i}</sup>";
+
+				$tablesHTML = " 
+				<table>
+					<tr>
+					<td>
+						{$orcidHTML}
+					</td>
+					<td>
+						{$rorIdHTML}
+					</td>
+					<td>
+						{$supHTML}
+					</td>
+					</tr>
+				</table>
+				";
+				$authorName .= $tablesHTML;
 
 				if ($author != $lastAuthor) {
 					$authorName .= ",";
 				}
-				$pdfDocument->writeHTML($authorName, true, false, true, false, '');
+				$pdfDocument->writeHTML($authorName, true, false, true, false, 'L');
 			}
 		}
 		$pdfDocument->Ln(6);
@@ -256,21 +275,17 @@ class JatsParserPlugin extends GenericPlugin
 			foreach ($authors as $author) {
 				$i += 1;
 
-				$pdfDocument->SetFont('dejavuserif', 'I', 10);
-				$pdfDocument->setCellPaddings(1, 1, 1, 1);
-				$pdfDocument->setCellMargins(1, 1, 1, 1);
+				#$pdfDocument->SetFont('dejavuserif', 'I', 11);
+				#$pdfDocument->setCellPaddings(1, 1, 1, 1);
+				#$pdfDocument->setCellMargins(1, 1, 1, 1);
 
-				$biographyHTML .= "<b>{$i}</b> <span>{$author->getBiography($localeKey)}</span>";
-
-				if ($author != $lastAuthor) {
-					$biographyHTML .= "<span>, </span>";
-				}
-
+				$bio = strip_tags($author->getBiography($localeKey));
+				$biographyHTML .= "<b>{$i}</b> <span>{$bio}</span>";
 				$authorsInfoForCitation .= $author->getFamilyName($localeKey) . ' ' . substr($author->getGivenName($localeKey), 0, 1) . ', ';
 			}
 			$authorsInfoForCitation = substr($authorsInfoForCitation, 0, -2);
 			$pdfDocument->writeHTML($biographyHTML, true, false, true, false, '');
-			$pdfDocument->Ln(6);
+			$pdfDocument->Ln(4);
 		}
 
 
