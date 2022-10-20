@@ -323,10 +323,84 @@ class JatsParserPlugin extends GenericPlugin
 		$pdfDocument->SetFont('dejavuserif', '', 10);
 
 		$htmlString .= "\n" . '<style>' . "\n" . file_get_contents($this->getPluginPath() . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'styles' . DIRECTORY_SEPARATOR . 'default' . DIRECTORY_SEPARATOR . 'pdfGalley.css') . '</style>';
-		$htmlString = $this->_prepareForPdfGalley($htmlString);
-		$pdfDocument->writeHTML($htmlString, true, false, true, false, '');
+		$pdfDocument= $this->obtenerColumnas($htmlString, $pdfDocument);
 
 		return $pdfDocument->Output('article.pdf', 'S');
+	}
+
+	private function obtenerColumnas(string $htmlString, TCPDFDocument $pdfDocument): TCPDFDocument
+	{
+
+		$dom = new DOMDocument('1.0', 'utf-8');
+		$htmlHead = "\n";
+		$htmlHead .= '<head>';
+		$htmlHead .= "\t" . '<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>';
+		$htmlHead .= "\n";
+		$htmlHead .= '</head>';
+		$dom->loadHTML($htmlHead . $htmlString);
+
+		// set style for figures and table
+		$xpath = new \DOMXPath($dom);
+
+		$tableNodes = $xpath->evaluate('//table');
+		foreach ($tableNodes as $tableNode) {
+			$tableNode->setAttribute('border', '1');
+			$tableNode->setAttribute('cellpadding', '2');
+		}
+
+		$captionNodes = $xpath->evaluate('//figure/p[@class="caption"]|//table/caption');
+		foreach ($captionNodes as $captionNode) {
+			$captionParts = $xpath->evaluate('span[@class="label"]|span[@class="title"]', $captionNode);
+			foreach ($captionParts as $captionPart) {
+				$emptyTextNode = $dom->createTextNode(' ');
+				$captionPart->appendChild($emptyTextNode);
+			}
+		}
+
+		// TCPDF doesn't recognize display property, insert div
+		$tableCaptions = $xpath->evaluate('//table/caption');
+		foreach ($tableCaptions as $tableCaption) {
+			/* @var $tableNode \DOMNode */
+			$tableNode = $tableCaption->parentNode;
+			$divNode = $dom->createElement('div');
+			$divNode->setAttribute('class', 'caption');
+			$nextToTableNode = $tableNode->nextSibling;
+			if ($nextToTableNode) {
+				$tableNode->parentNode->insertBefore($divNode, $nextToTableNode);
+			}
+			$divNode->appendChild($tableCaption);
+		}
+				
+		$principalDiv = $xpath->evaluate('//*[contains(@class, jatsParserFullText)]');
+		$escribirHtml = "";
+		$htmlPdf = false;
+		foreach ($principalDiv as $element) {
+
+			if($element->nodeName == "img" || $element->nodeName == "table"|| $element->nodeName == "figure" || $element->getAttribute('class')=='figure'){
+				// ESCRIBO TODO LO ANTERIOR EN DOS COLUMNAS
+				$pdfDocument->resetColumns();
+				$pdfDocument->setEqualColumns(2, 84);  // KEY PART -  number of cols and width
+				$pdfDocument->selectColumn();               
+				$pdfDocument->writeHTML($escribirHtml, true, false, true, false);
+				// ESCRIBO ESTE ELEMENTO EN UNA COLUMNA
+				$pdfDocument->resetColumns();
+				$elementoString =  $dom->saveHTML($element);
+				$pdfDocument->writeHTML($elementoString, true, false, true, false);    
+				$escribirHtml = "";
+				$htmlPdf = true;
+			}else{
+				$elementoString =  $dom->saveHTML($element);
+				$escribirHtml = $escribirHtml .$elementoString ;
+			}
+		}
+
+		if(!$htmlPdf){
+			$pdfDocument->resetColumns();
+			$pdfDocument->setEqualColumns(2, 84);  // KEY PART -  number of cols and width
+			$pdfDocument->selectColumn();               
+			$pdfDocument->writeHTML($escribirHtml, true, false, true, false);
+		}
+		return  $pdfDocument;
 	}
 
 	/**
@@ -375,6 +449,28 @@ class JatsParserPlugin extends GenericPlugin
 			}
 			$divNode->appendChild($tableCaption);
 		}
+				
+		$principalDiv = $xpath->evaluate('//*[contains(@class, jatsParserFullText)]');
+		
+		foreach ($principalDiv as $element) {
+
+			if($element->nodeName == "img" || $element->nodeName == "table"|| $element->nodeName == "figure" || $element->getAttribute('class')=='figure'){
+				$element->setAttribute('class','oneColumn');
+			}else{
+				$element->setAttribute('class','twoColumn');
+			}
+			/*
+			$node = $element->parentNode;
+
+			$nextToTableNode = $node->nextSibling;
+			if ($nextToTableNode && $nextToTableNode->getAttribute('class')=='caption') {
+				$divNode = $dom->createElement('div');
+				$divNode->setAttribute('class', 'prueba');
+			}else{
+				$divNode->appendChild($element);
+			}*/
+		}
+		// Remove redundant whitespaces before caption label
 
 		// Remove redundant whitespaces before caption label
 		$modifiedHtmlString = $dom->saveHTML();

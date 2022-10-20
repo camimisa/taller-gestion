@@ -27,3 +27,14 @@ th {
 .caption br {
 	line-height: 50%;
 }
+
+body{
+	column-count: 2;
+}
+
+.oneColumn{
+	background-color: yellow;
+}
+.twoColumn{
+	background-color: pink;
+}
