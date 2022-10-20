@@ -385,10 +385,11 @@ class JatsParserPlugin extends GenericPlugin
 				// ESCRIBO ESTE ELEMENTO EN UNA COLUMNA
 				$pdfDocument->resetColumns();
 				$elementoString =  $dom->saveHTML($element);
-				$pdfDocument->writeHTML($elementoString, true, false, true, false);    
+				$pdfDocument->writeHTML($elementoString, true, false, false, 'R');    
 				$escribirHtml = "";
 				$htmlPdf = true;
 			}else{
+				$htmlPdf = false;
 				$elementoString =  $dom->saveHTML($element);
 				$escribirHtml = $escribirHtml .$elementoString ;
 			}
