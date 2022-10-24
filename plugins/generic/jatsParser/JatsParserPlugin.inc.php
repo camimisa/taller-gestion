@@ -330,7 +330,7 @@ class JatsParserPlugin extends GenericPlugin
 	}
 
 	private function saveToFile(string $file,string $text){
-		$file = 'C:/Users/camil/Downloads/Prueba/' . $file . '.txt';
+		$file = './logs/' . $file . '.txt';
 		// Write the contents back to the file
 		file_put_contents($file, $text);
 	}
@@ -345,17 +345,15 @@ class JatsParserPlugin extends GenericPlugin
 		if($cantidad == 1){
 			$pdfDocument->writeHTML($textoSeparado[0], true, false, true, false);
 		}
-		$pruebahtml = "";
+
 		for($i=0; $i<$cantidad;$i++){
 			$pdfDocument->resetColumns();
-			$pruebahtml = $pruebahtml . (($i%2)==0) . "-" . $i . "-" . $textoSeparado[$i] ."\n";
 			if(($i%2)==0){ // PAR: dos columnas
 				$pdfDocument->setEqualColumns(2, 84);  // KEY PART -  number of cols and width
 				$pdfDocument->selectColumn(); 
 			} // IMPAR: una columna
 			$pdfDocument->writeHTML($textoSeparado[$i], true, false, true, false);
 		}
-		$this->saveToFile("pruebahtml", $pruebahtml);
 		return  $pdfDocument;
 	}
 
@@ -407,11 +405,10 @@ class JatsParserPlugin extends GenericPlugin
 		}
 				
 		$principalDiv = $xpath->evaluate('//*[contains(@class, jatsParserFullText)]');
-		$pruebahtml = "";
+
 		foreach ($principalDiv as $element) {
 			if($element->nodeName == "table"|| $element->nodeName == "figure"){
 				$element->setAttribute('class','oneColumn');
-				$pruebahtml = $pruebahtml . $element->nodeName . "\n";
 				$textNodePrincipio = $dom->createTextNode('BREAK');
 				$textNodeFin = $dom->createTextNode('BREAK');
 				$element->parentNode->insertBefore($textNodePrincipio, $element);
