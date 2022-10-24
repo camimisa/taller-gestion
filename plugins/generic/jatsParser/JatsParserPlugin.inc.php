@@ -323,84 +323,39 @@ class JatsParserPlugin extends GenericPlugin
 		$pdfDocument->SetFont('dejavuserif', '', 10);
 
 		$htmlString .= "\n" . '<style>' . "\n" . file_get_contents($this->getPluginPath() . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'styles' . DIRECTORY_SEPARATOR . 'default' . DIRECTORY_SEPARATOR . 'pdfGalley.css') . '</style>';
-		$pdfDocument= $this->obtenerColumnas($htmlString, $pdfDocument);
-
+		$htmlString = $this->_prepareForPdfGalley($htmlString);
+		$pdfDocument = $this->separarTextoColumnas($htmlString, $pdfDocument);
+		$this->saveToFile("prueba", $htmlString);
 		return $pdfDocument->Output('article.pdf', 'S');
 	}
 
-	private function obtenerColumnas(string $htmlString, TCPDFDocument $pdfDocument): TCPDFDocument
+	private function saveToFile(string $file,string $text){
+		$file = 'C:/Users/camil/Downloads/Prueba/' . $file . '.txt';
+		// Write the contents back to the file
+		file_put_contents($file, $text);
+	}
+
+	private function separarTextoColumnas(string $htmlString, TCPDFDocument $pdfDocument): TCPDFDocument
 	{
-
-		$dom = new DOMDocument('1.0', 'utf-8');
-		$htmlHead = "\n";
-		$htmlHead .= '<head>';
-		$htmlHead .= "\t" . '<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>';
-		$htmlHead .= "\n";
-		$htmlHead .= '</head>';
-		$dom->loadHTML($htmlHead . $htmlString);
-
-		// set style for figures and table
-		$xpath = new \DOMXPath($dom);
-
-		$tableNodes = $xpath->evaluate('//table');
-		foreach ($tableNodes as $tableNode) {
-			$tableNode->setAttribute('border', '1');
-			$tableNode->setAttribute('cellpadding', '2');
+		$textoSeparado = explode("BREAK",$htmlString);
+		$pdfDocument->resetColumns();
+		$pdfDocument->setEqualColumns(2, 84);  // KEY PART -  number of cols and width
+		$pdfDocument->selectColumn(); 
+		$cantidad = count($textoSeparado);
+		if($cantidad == 1){
+			$pdfDocument->writeHTML($textoSeparado[0], true, false, true, false);
 		}
-
-		$captionNodes = $xpath->evaluate('//figure/p[@class="caption"]|//table/caption');
-		foreach ($captionNodes as $captionNode) {
-			$captionParts = $xpath->evaluate('span[@class="label"]|span[@class="title"]', $captionNode);
-			foreach ($captionParts as $captionPart) {
-				$emptyTextNode = $dom->createTextNode(' ');
-				$captionPart->appendChild($emptyTextNode);
-			}
-		}
-
-		// TCPDF doesn't recognize display property, insert div
-		$tableCaptions = $xpath->evaluate('//table/caption');
-		foreach ($tableCaptions as $tableCaption) {
-			/* @var $tableNode \DOMNode */
-			$tableNode = $tableCaption->parentNode;
-			$divNode = $dom->createElement('div');
-			$divNode->setAttribute('class', 'caption');
-			$nextToTableNode = $tableNode->nextSibling;
-			if ($nextToTableNode) {
-				$tableNode->parentNode->insertBefore($divNode, $nextToTableNode);
-			}
-			$divNode->appendChild($tableCaption);
-		}
-				
-		$principalDiv = $xpath->evaluate('//*[contains(@class, jatsParserFullText)]');
-		$escribirHtml = "";
-		$htmlPdf = false;
-		foreach ($principalDiv as $element) {
-
-			if($element->nodeName == "img" || $element->nodeName == "table"|| $element->nodeName == "figure" || $element->getAttribute('class')=='figure'){
-				// ESCRIBO TODO LO ANTERIOR EN DOS COLUMNAS
-				$pdfDocument->resetColumns();
-				$pdfDocument->setEqualColumns(2, 84);  // KEY PART -  number of cols and width
-				$pdfDocument->selectColumn();               
-				$pdfDocument->writeHTML($escribirHtml, true, false, true, false);
-				// ESCRIBO ESTE ELEMENTO EN UNA COLUMNA
-				$pdfDocument->resetColumns();
-				$elementoString =  $dom->saveHTML($element);
-				$pdfDocument->writeHTML($elementoString, true, false, false, 'R');    
-				$escribirHtml = "";
-				$htmlPdf = true;
-			}else{
-				$htmlPdf = false;
-				$elementoString =  $dom->saveHTML($element);
-				$escribirHtml = $escribirHtml .$elementoString ;
-			}
-		}
-
-		if(!$htmlPdf){
+		$pruebahtml = "";
+		for($i=0; $i<$cantidad;$i++){
 			$pdfDocument->resetColumns();
-			$pdfDocument->setEqualColumns(2, 84);  // KEY PART -  number of cols and width
-			$pdfDocument->selectColumn();               
-			$pdfDocument->writeHTML($escribirHtml, true, false, true, false);
+			$pruebahtml = $pruebahtml . (($i%2)==0) . "-" . $i . "-" . $textoSeparado[$i] ."\n";
+			if(($i%2)==0){ // PAR: dos columnas
+				$pdfDocument->setEqualColumns(2, 84);  // KEY PART -  number of cols and width
+				$pdfDocument->selectColumn(); 
+			} // IMPAR: una columna
+			$pdfDocument->writeHTML($textoSeparado[$i], true, false, true, false);
 		}
+		$this->saveToFile("pruebahtml", $pruebahtml);
 		return  $pdfDocument;
 	}
 
@@ -452,32 +407,21 @@ class JatsParserPlugin extends GenericPlugin
 		}
 				
 		$principalDiv = $xpath->evaluate('//*[contains(@class, jatsParserFullText)]');
-		
+		$pruebahtml = "";
 		foreach ($principalDiv as $element) {
-
-			if($element->nodeName == "img" || $element->nodeName == "table"|| $element->nodeName == "figure" || $element->getAttribute('class')=='figure'){
+			if($element->nodeName == "table"|| $element->nodeName == "figure"){
 				$element->setAttribute('class','oneColumn');
-			}else{
-				$element->setAttribute('class','twoColumn');
+				$pruebahtml = $pruebahtml . $element->nodeName . "\n";
+				$textNodePrincipio = $dom->createTextNode('BREAK');
+				$textNodeFin = $dom->createTextNode('BREAK');
+				$element->parentNode->insertBefore($textNodePrincipio, $element);
+				$element->parentNode->insertBefore($textNodeFin, $element->nextSibling);
 			}
-			/*
-			$node = $element->parentNode;
-
-			$nextToTableNode = $node->nextSibling;
-			if ($nextToTableNode && $nextToTableNode->getAttribute('class')=='caption') {
-				$divNode = $dom->createElement('div');
-				$divNode->setAttribute('class', 'prueba');
-			}else{
-				$divNode->appendChild($element);
-			}*/
 		}
-		// Remove redundant whitespaces before caption label
 
-		// Remove redundant whitespaces before caption label
 		$modifiedHtmlString = $dom->saveHTML();
 		$modifiedHtmlString = preg_replace('/<caption>\s*/', '<br>' . '<caption>', $modifiedHtmlString);
 		$modifiedHtmlString = preg_replace('/<p class="caption">\s*/', '<p class="caption">', $modifiedHtmlString);
-
 		return $modifiedHtmlString;
 	}
 
