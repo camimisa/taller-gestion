@@ -203,7 +203,7 @@ class JatsParserPlugin extends GenericPlugin
 		}
 		// $pdfDocument->Cell(45, 5, ' ', 0);
 
-		$pdfDocument->MultiCell('', 0, $submissionSection, 0, 'J', false, 2, 19, '', true, 0, false, true, 0, "T", true);
+		$pdfDocument->writeHTML($submissionSection, true, false, true, false, 'J');
 
 		// $pdfDocument->Cell(190, 0, $txt, 0, 1, 'L');
 		$pdfDocument->Ln();
@@ -212,9 +212,8 @@ class JatsParserPlugin extends GenericPlugin
 
 		$pdfDocument->SetFillColor(255, 255, 255);
 		$pdfDocument->SetFont('dejavuserif', '', 30);
-		// $pdfDocument->Cell(45, 5, ' ', 0);
-		// $pdfDocument->MultiCell('', 0, $publication->getLocalizedFullTitle($localeKey), 0, 'L', 1, 1, '', '', true);
-		$pdfDocument->MultiCell('', 0, $publication->getLocalizedFullTitle($localeKey), 0, '', 1, 2, 19, '', true, 0, false, true, 0, "T", true);
+
+		$pdfDocument->writeHTML($publication->getLocalizedFullTitle($localeKey), true, false, true, false, 'J');
 
 		$pdfDocument->Ln(6);
 
@@ -264,7 +263,7 @@ class JatsParserPlugin extends GenericPlugin
 				$pdfDocument->writeHTML($authorName, true, false, true, false, 'L');
 			}
 		}
-		$pdfDocument->Ln(6);
+		$pdfDocument->Ln(4);
 		$i = 0;
 		//5 -Article's affiliation
 
@@ -285,7 +284,7 @@ class JatsParserPlugin extends GenericPlugin
 			}
 			$authorsInfoForCitation = substr($authorsInfoForCitation, 0, -2);
 			$pdfDocument->writeHTML($biographyHTML, true, false, true, false, '');
-			$pdfDocument->Ln(4);
+			$pdfDocument->Ln(6);
 		}
 
 
@@ -321,7 +320,7 @@ class JatsParserPlugin extends GenericPlugin
 		// Text (goes from JATSParser
 		$pdfDocument->setCellPaddings(0, 0, 0, 0);
 		$pdfDocument->SetFont('dejavuserif', '', 10);
-
+		$pdfDocument->AddPage();
 		$htmlString .= "\n" . '<style>' . "\n" . file_get_contents($this->getPluginPath() . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'styles' . DIRECTORY_SEPARATOR . 'default' . DIRECTORY_SEPARATOR . 'pdfGalley.css') . '</style>';
 		$htmlString = $this->_prepareForPdfGalley($htmlString);
 		$pdfDocument = $this->separarTextoColumnas($htmlString, $pdfDocument);
