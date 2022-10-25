@@ -324,9 +324,37 @@ class JatsParserPlugin extends GenericPlugin
 
 		$htmlString .= "\n" . '<style>' . "\n" . file_get_contents($this->getPluginPath() . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'styles' . DIRECTORY_SEPARATOR . 'default' . DIRECTORY_SEPARATOR . 'pdfGalley.css') . '</style>';
 		$htmlString = $this->_prepareForPdfGalley($htmlString);
-		$pdfDocument->writeHTML($htmlString, true, false, true, false, '');
-
+		$pdfDocument = $this->separarTextoColumnas($htmlString, $pdfDocument);
+		$this->saveToFile("prueba", $htmlString);
 		return $pdfDocument->Output('article.pdf', 'S');
+	}
+
+	private function saveToFile(string $file,string $text){
+		$file = './logs/' . $file . '.txt';
+		// Write the contents back to the file
+		file_put_contents($file, $text);
+	}
+
+	private function separarTextoColumnas(string $htmlString, TCPDFDocument $pdfDocument): TCPDFDocument
+	{
+		$textoSeparado = explode("BREAK",$htmlString);
+		$pdfDocument->resetColumns();
+		$pdfDocument->setEqualColumns(2, 84);  // KEY PART -  number of cols and width
+		$pdfDocument->selectColumn(); 
+		$cantidad = count($textoSeparado);
+		if($cantidad == 1){
+			$pdfDocument->writeHTML($textoSeparado[0], true, false, true, false);
+		}
+
+		for($i=0; $i<$cantidad;$i++){
+			$pdfDocument->resetColumns();
+			if(($i%2)==0){ // PAR: dos columnas
+				$pdfDocument->setEqualColumns(2, 84);  // KEY PART -  number of cols and width
+				$pdfDocument->selectColumn(); 
+			} // IMPAR: una columna
+			$pdfDocument->writeHTML($textoSeparado[$i], true, false, true, false);
+		}
+		return  $pdfDocument;
 	}
 
 	/**
@@ -375,12 +403,22 @@ class JatsParserPlugin extends GenericPlugin
 			}
 			$divNode->appendChild($tableCaption);
 		}
+				
+		$principalDiv = $xpath->evaluate('//*[contains(@class, jatsParserFullText)]');
 
-		// Remove redundant whitespaces before caption label
+		foreach ($principalDiv as $element) {
+			if($element->nodeName == "table"|| $element->nodeName == "figure"){
+				$element->setAttribute('class','oneColumn');
+				$textNodePrincipio = $dom->createTextNode('BREAK');
+				$textNodeFin = $dom->createTextNode('BREAK');
+				$element->parentNode->insertBefore($textNodePrincipio, $element);
+				$element->parentNode->insertBefore($textNodeFin, $element->nextSibling);
+			}
+		}
+
 		$modifiedHtmlString = $dom->saveHTML();
 		$modifiedHtmlString = preg_replace('/<caption>\s*/', '<br>' . '<caption>', $modifiedHtmlString);
 		$modifiedHtmlString = preg_replace('/<p class="caption">\s*/', '<p class="caption">', $modifiedHtmlString);
-
 		return $modifiedHtmlString;
 	}
 
