@@ -237,12 +237,12 @@ class JatsParserPlugin extends GenericPlugin
 				$i += 1;
 
 				$authorName = "<span>{$author->getGivenName($localeKey)} {$author->getFamilyName($localeKey)}</span> ";
-				$orcidHTML = '<a href="'. $orcid . '">' .'<img src="./plugins/themes/defaultManuscript/templates/frontend/images/orcid.png" width="13" height="13"/>' . '</a>';
-				$rorIdHTML = '<a href="'. $rorId . '">' .'<img src="./plugins/themes/defaultManuscript/templates/frontend/images/rorId.png" width="13" height="13"/>' . '</a>';
+				$orcidHTML = '<a href="'. $orcid . '">' .'<img src="./plugins/themes/defaultManuscript/templates/frontend/images/orcid.png" width="17" height="17"/>' . '</a>';
+				$rorIdHTML = '<a href="'. $rorId . '">' .'<img src="./plugins/themes/defaultManuscript/templates/frontend/images/rorId.png" width="17" height="17"/>' . '</a>';
 				$supHTML = "<sup>{$i}</sup>";
 
 				$tablesHTML = " 
-				<table>
+				<table style=\"width:15%;\">
 					<tr>
 					<td>
 						{$orcidHTML}
