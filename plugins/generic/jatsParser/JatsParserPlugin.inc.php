@@ -380,6 +380,11 @@ class JatsParserPlugin extends GenericPlugin
 			$tableNode->setAttribute('cellpadding', '2');
 		}
 
+		$h2Nodes = $xpath->evaluate('//h2[@class="article-section-title"]');
+		foreach ($h2Nodes as $h2Node) {
+			$h2Node->setAttribute('style', 'color: green;');
+		}
+
 		$captionNodes = $xpath->evaluate('//figure/p[@class="caption"]|//table/caption');
 		foreach ($captionNodes as $captionNode) {
 			$captionParts = $xpath->evaluate('span[@class="label"]|span[@class="title"]', $captionNode);
@@ -402,7 +407,7 @@ class JatsParserPlugin extends GenericPlugin
 			}
 			$divNode->appendChild($tableCaption);
 		}
-				
+		
 		$principalDiv = $xpath->evaluate('//*[contains(@class, jatsParserFullText)]');
 
 		foreach ($principalDiv as $element) {
