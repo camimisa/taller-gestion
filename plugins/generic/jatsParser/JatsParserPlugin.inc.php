@@ -211,7 +211,7 @@ class JatsParserPlugin extends GenericPlugin
 		// Article title
 
 		$pdfDocument->SetFillColor(255, 255, 255);
-		$pdfDocument->SetFont('dejavuserif', '', 30);
+		$pdfDocument->SetFont('dejavuserif', '', 25);
 
 		$pdfDocument->writeHTML($publication->getLocalizedFullTitle($localeKey), true, false, true, false, 'J');
 
@@ -323,8 +323,16 @@ class JatsParserPlugin extends GenericPlugin
 		$pdfDocument->AddPage();
 		$htmlString .= "\n" . '<style>' . "\n" . file_get_contents($this->getPluginPath() . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'styles' . DIRECTORY_SEPARATOR . 'default' . DIRECTORY_SEPARATOR . 'pdfGalley.css') . '</style>';
 		$htmlString = $this->_prepareForPdfGalley($htmlString);
-		$pdfDocument = $this->separarTextoColumnas($htmlString, $pdfDocument);
-		$this->saveToFile("prueba", $htmlString);
+		
+
+		$yColumn = $pdfDocument->getY();
+		$left_column = "";
+		$pdfDocument->writeHTMLCell(50, '', '', $yColumn, $left_column, 0, 0, 0, true, 'L', true);
+		$pdfDocument->SetFillColor(255, 255, 255);
+		$pdfDocument->writeHTMLCell('', '', '', '', $htmlString, 'B', 1, 1, true, 'J', true);
+
+		//$pdfDocument->SetMargins(67, PDF_MARGIN_TOP, PDF_MARGIN_RIGHT);
+		//$pdfDocument->writeHTML($htmlString, true, false, true, 'L');
 		return $pdfDocument->Output('article.pdf', 'S');
 	}
 
@@ -413,10 +421,10 @@ class JatsParserPlugin extends GenericPlugin
 		foreach ($principalDiv as $element) {
 			if($element->nodeName == "table"|| $element->nodeName == "figure"){
 				$element->setAttribute('class','oneColumn');
-				$textNodePrincipio = $dom->createTextNode('BREAK');
-				$textNodeFin = $dom->createTextNode('BREAK');
-				$element->parentNode->insertBefore($textNodePrincipio, $element);
-				$element->parentNode->insertBefore($textNodeFin, $element->nextSibling);
+				//$textNodePrincipio = $dom->createTextNode('BREAK');
+				//$textNodeFin = $dom->createTextNode('BREAK');
+				//$element->parentNode->insertBefore($textNodePrincipio, $element);
+				//$element->parentNode->insertBefore($textNodeFin, $element->nextSibling);
 			}
 		}
 
