@@ -193,6 +193,9 @@ class JatsParserPlugin extends GenericPlugin
 		$pdfDocument->SetAutoPageBreak(TRUE, PDF_MARGIN_BOTTOM);
 		$pdfDocument->setImageScale(PDF_IMAGE_SCALE_RATIO);
 
+		require_once(__DIR__ . '/JATSParser/logo/spa.php');
+		$pdfDocument->setLanguageArray($l);
+
 		$pdfDocument->AddPage();
 
 		// 2 - SECTION ID
@@ -348,10 +351,6 @@ class JatsParserPlugin extends GenericPlugin
 			$pdfDocument->writeHTMLCell('', '', '', '', $textoSeparado[0], 'B', 1, 1, true, 'J', true);
 		}
 
-		$arrayTamaños = array();
-		for($i=0; $i<$cantidad; $i++){
-			array_push($arrayTamaños, $pdfDocument->getStringHeight((210-67), $textoSeparado[$i]));
-		}
 
 		for($i=0; $i<$cantidad; $i++){
 			if($i>0 && $pdfDocument->GetY()>234 && (str_contains($textoSeparado[$i], "<h2") || str_contains($textoSeparado[$i], "<h3"))){
@@ -359,6 +358,10 @@ class JatsParserPlugin extends GenericPlugin
 			}
 			$textoSeparado[$i] .= "\n" . '<style>' . "\n" . file_get_contents($this->getPluginPath() . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'styles' . DIRECTORY_SEPARATOR . 'default' . DIRECTORY_SEPARATOR . 'pdfGalley.css') . '</style>';
 
+			if(str_contains($textoSeparado[$i], "<table")){
+				$hyphen_patterns = TCPDF_STATIC::getHyphenPatternsFromTEX(__DIR__ . '/JATSParser/logo/hyph-es.tex');
+				$textoSeparado[$i] = $pdfDocument->hyphenateText($textoSeparado[$i], $hyphen_patterns, array(), 1, 1, 1, 8);
+			}
 
 			#Aca insertamos el objeto solo para saber cual seria el nuevo valor de Y.
 			$beforeY = $pdfDocument->GetY();
