@@ -481,5 +481,5 @@ composer.lock
 !/plugins/generic
 /plugins/generic/*
 !/plugins/generic/jatsParser
-
+!/plugins/generic/themes
 !.gitignore
