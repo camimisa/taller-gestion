@@ -325,14 +325,12 @@ class JatsParserPlugin extends GenericPlugin
 		$htmlString = $this->_prepareForPdfGalley($htmlString);
 		
 
-		$yColumn = $pdfDocument->getY();
 		$left_column = "";
-		$pdfDocument->writeHTMLCell(50, '', '', $yColumn, $left_column, 0, 0, 0, true, 'L', true);
+		$pdfDocument->writeHTMLCell(50, '', '', '', $left_column, 0, 0, 0, true, 'L', true);
 		$pdfDocument->SetFillColor(255, 255, 255);
-		$pdfDocument->writeHTMLCell('', '', '', '', $htmlString, 'B', 1, 1, true, 'J', true);
 
-		//$pdfDocument->SetMargins(67, PDF_MARGIN_TOP, PDF_MARGIN_RIGHT);
-		//$pdfDocument->writeHTML($htmlString, true, false, true, 'L');
+		$pdfDocument = $this->checkForSpacing($htmlString, $pdfDocument);
+
 		return $pdfDocument->Output('article.pdf', 'S');
 	}
 
@@ -342,25 +340,57 @@ class JatsParserPlugin extends GenericPlugin
 		file_put_contents($file, $text);
 	}
 
-	private function separarTextoColumnas(string $htmlString, TCPDFDocument $pdfDocument): TCPDFDocument
+	private function checkForSpacing(string $htmlString, TCPDFDocument $pdfDocument): TCPDFDocument
 	{
-		$textoSeparado = explode("BREAK",$htmlString);
-		$pdfDocument->resetColumns();
-		$pdfDocument->setEqualColumns(2, 84);  // KEY PART -  number of cols and width
-		$pdfDocument->selectColumn(); 
+		$textoSeparado = explode("BREAK", $htmlString);
 		$cantidad = count($textoSeparado);
 		if($cantidad == 1){
-			$pdfDocument->writeHTML($textoSeparado[0], true, false, true, false);
+			$pdfDocument->writeHTMLCell('', '', '', '', $textoSeparado[0], 'B', 1, 1, true, 'J', true);
 		}
 
-		for($i=0; $i<$cantidad;$i++){
-			$pdfDocument->resetColumns();
-			if(($i%2)==0){ // PAR: dos columnas
-				$pdfDocument->setEqualColumns(2, 84);  // KEY PART -  number of cols and width
-				$pdfDocument->selectColumn(); 
-			} // IMPAR: una columna
-			$pdfDocument->writeHTML($textoSeparado[$i], true, false, true, false);
+		$arrayTamaños = array();
+		for($i=0; $i<$cantidad; $i++){
+			array_push($arrayTamaños, $pdfDocument->getStringHeight((210-67), $textoSeparado[$i]));
 		}
+
+		for($i=0; $i<$cantidad; $i++){
+			if($i>0 && $pdfDocument->GetY()>234 && (str_contains($textoSeparado[$i], "<h2") || str_contains($textoSeparado[$i], "<h3"))){
+				$pdfDocument->AddPage();
+			}
+			$textoSeparado[$i] .= "\n" . '<style>' . "\n" . file_get_contents($this->getPluginPath() . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'styles' . DIRECTORY_SEPARATOR . 'default' . DIRECTORY_SEPARATOR . 'pdfGalley.css') . '</style>';
+
+
+			#Aca insertamos el objeto solo para saber cual seria el nuevo valor de Y.
+			$beforeY = $pdfDocument->GetY();
+			$pdfAux = clone $pdfDocument;
+			$pdfDocument->writeHTMLCell('', '', 67, '', $textoSeparado[$i], '0', 1, 1, true, 'J', true);
+			$possibleY = $pdfDocument->GetY();
+			$pdfDocument = $pdfAux;
+
+			if($possibleY < 35 && $beforeY > 34 && !str_contains($textoSeparado[$i], "<table")){
+
+				$stretching = 90;
+				while($possibleY >= 34){
+					$pdfDocument->setFontStretching($stretching);
+					$pdfAux = clone $pdfDocument;
+					$pdfDocument->writeHTMLCell('', '', 67, '', $textoSeparado[$i], '0', 1, 1, true, 'J', true);
+					$stretching -= 2;
+					$possibleY = $pdfDocument->GetY();
+					$pdfDocument = $pdfAux;
+				}
+				$pdfDocument->setFontStretching($stretching-2);
+				$pdfDocument->writeHTMLCell('', '', 67, '', $textoSeparado[$i], '0', 1, 1, true, 'J', true);
+				$pdfDocument->setFontStretching(100);
+			}
+			else{
+				$pdfDocument->writeHTMLCell('', '', 67, '', $textoSeparado[$i], '0', 1, 1, true, 'J', true);
+			}
+
+
+			if($pdfDocument->GetY()>264){
+				$pdfDocument->AddPage();
+			}
+		}				
 		return  $pdfDocument;
 	}
 
@@ -419,12 +449,12 @@ class JatsParserPlugin extends GenericPlugin
 		$principalDiv = $xpath->evaluate('//*[contains(@class, jatsParserFullText)]');
 
 		foreach ($principalDiv as $element) {
-			if($element->nodeName == "table"|| $element->nodeName == "figure"){
-				$element->setAttribute('class','oneColumn');
-				//$textNodePrincipio = $dom->createTextNode('BREAK');
-				//$textNodeFin = $dom->createTextNode('BREAK');
-				//$element->parentNode->insertBefore($textNodePrincipio, $element);
-				//$element->parentNode->insertBefore($textNodeFin, $element->nextSibling);
+			if($element->nodeName == "table" || $element->nodeName == "figure" ||
+				$element->nodeName == "p" || $element->nodeName == "h3"){
+				$textNodePrincipio = $dom->createTextNode('BREAK');
+				$textNodeFin = $dom->createTextNode('BREAK');
+				$element->parentNode->insertBefore($textNodePrincipio, $element);
+				$element->parentNode->insertBefore($textNodeFin, $element->nextSibling);
 			}
 		}
 
